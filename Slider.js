@@ -11,10 +11,10 @@ var {
   View,
   TouchableHighlight
 } = ReactNative;
+var LinearGradient = require('react-native-linear-gradient').default;
 
 var converter = require('./converter.js');
 var mockProps = require('./mockProps.js');
-
 
 
 var sliderProps = {
@@ -78,7 +78,7 @@ var Slider = React.createClass({
         onMoveShouldSetPanResponderCapture: (evt, gestureState) => true,
         onPanResponderGrant: (evt, gestureState) => start(),
         onPanResponderMove: (evt, gestureState) => move(gestureState),
-        onPanResponderTerminationRequest: (evt, gestureState) => false,
+        onPanResponderTerminationRequest: (evt, gestureState) => true,
         onPanResponderRelease: (evt, gestureState) => end(gestureState),
         onPanResponderTerminate: (evt, gestureState) => end(gestureState),
         onShouldBlockNativeResponder: (evt, gestureState) => true
@@ -200,68 +200,84 @@ var Slider = React.createClass({
     });
   },
 
+  renderMarker(markerRef, panHandlers, isPressed) {
+    var {slipDisplacement, height, width, borderRadius} = this.props.touchDimensions;
+    var Marker = this.props.customMarker;
+    var touchStyle = {
+      height: height,
+      width: width,
+      left: -width/2,
+      borderRadius: borderRadius || 0
+    };
+    return (
+      <View
+        style={[styles.touch,touchStyle]}
+        ref={component => markerRef = component}
+        {...panHandlers}
+      >
+        <Marker
+          pressed={isPressed}
+          markerStyle={this.props.markerStyle}
+          pressedMarkerStyle={this.props.pressedMarkerStyle}
+        />
+      </View>
+    );
+  },
+
   render() {
+
     var {positionOne, positionTwo} = this.state;
-    var {selectedStyle, unselectedStyle, sliderLength} = this.props;
+    var {selectedStyle, unselectedStyle, sliderLength, markerStyle} = this.props;
+    var halfMarkerWidth = markerStyle.width / 2;
     var twoMarkers = positionTwo;
 
-    var fixedPositionOne = Math.floor(positionOne / this.stepLength) * this.stepLength;
-    var fixedPositionTwo = Math.floor(positionTwo / this.stepLength) * this.stepLength;
-
-    var trackOneLength = fixedPositionOne;
+    var trackOneLength = positionOne;
     var trackOneStyle = twoMarkers ? unselectedStyle : selectedStyle;
-    var trackThreeLength = twoMarkers ? sliderLength - (fixedPositionTwo) : 0;
+    var trackThreeLength = twoMarkers ? sliderLength - (positionTwo) : 0;
     var trackThreeStyle = unselectedStyle;
     var trackTwoLength = sliderLength - trackOneLength - trackThreeLength;
     var trackTwoStyle = twoMarkers ? selectedStyle : unselectedStyle;
-    var Marker = this.props.customMarker;
-    var {top, slipDisplacement, height, width, borderRadius} = this.props.touchDimensions;
-    var touchStyle = {
-      top: top || -10,
-      height: height,
-      width: width,
-      borderRadius: borderRadius || 0
-    };
 
     return (
       <View style={[styles.container, this.props.containerStyle]}>
-        <View style={[styles.fullTrack, { width: sliderLength }]}>
-          <View style={[this.props.trackStyle, styles.track, trackOneStyle, { width: trackOneLength }]} />
-          <View style={[this.props.trackStyle, styles.track, trackTwoStyle, { width: trackTwoLength }]} />
-          { twoMarkers && (
-            <View style={[this.props.trackStyle, styles.track, trackThreeStyle, { width: trackThreeLength }]} />
-          ) }
-
-
-          <View
-            style={[styles.touch, touchStyle, {left: -(trackTwoLength + trackThreeLength + width / 2)}]}
-            ref={component => this._markerOne = component}
-            {...this._panResponderOne.panHandlers}
-            >
-            <Marker
-              pressed={this.state.onePressed}
-              value={this.state.valueOne}
-              markerStyle={this.props.markerStyle}
-              pressedMarkerStyle={this.props.pressedMarkerStyle}
-              />
-          </View>
-
-          { twoMarkers && (positionOne !== this.props.sliderLength) && (
-            <View
-              style={[styles.touch, touchStyle, {left: -(trackThreeLength + width * 1.5)}]}
-              ref={component => this._markerTwo = component}
-              {...this._panResponderTwo.panHandlers}
+        {
+          this.props.gradientOptions 
+            ?
+              <LinearGradient
+                {...this.props.gradientOptions}  
+                style={[this.props.trackStyle, styles.fullTrack, {width:sliderLength}]}
               >
-              <Marker
-                pressed={this.state.twoPressed}
-                value={this.state.valueOne}
-                markerStyle={this.props.markerStyle}
-                pressedMarkerStyle={this.props.pressedMarkerStyle}
-                />
-            </View>
-          ) }
-
-        </View>
+                <View style={{width: trackOneLength}} />
+                <View style={[styles.track, {width: trackTwoLength}]}>
+                  {this.renderMarker(this._markerOne, this._panResponderOne.panHandlers, this.state.onePressed)}
+                </View>
+                {
+                  twoMarkers && 
+                    <View style={[styles.track, {width: trackThreeLength}]}>
+                      {
+                        positionOne !== this.props.sliderLength && 
+                          this.renderMarker(this._markerTwo, this._panResponderTwo.panHandlers, this.state.twoPressed)
+                      }
+                    </View>
+                }
+              </LinearGradient>
+            :
+              <View style={[styles.fullTrack, {width:sliderLength}]}>
+                <View style={[this.props.trackStyle, styles.track, trackOneStyle, {width: trackOneLength}]} />
+                <View style={[this.props.trackStyle, styles.track, trackTwoStyle, {width: trackTwoLength}]}>
+                  {this.renderMarker(this._markerOne, this._panResponderOne.panHandlers, this.state.onePressed)}
+                </View>
+                {
+                  twoMarkers && 
+                    <View style={[this.props.trackStyle, styles.track, trackThreeStyle, {width: trackThreeLength}]}>
+                      {
+                        positionOne !== this.props.sliderLength && 
+                          this.renderMarker(this._markerTwo, this._panResponderTwo.panHandlers, this.state.twoPressed)
+                      }
+                    </View>
+                }
+              </View>
+        }
       </View>
     );
   }
